@@ -1,6 +1,7 @@
 import numpy as np
 
-aa_list = ['A', 'R', 'N', 'D', 'C', 'Q', 'E', 'G', 'H', 'I', 'L', 'K', 'M', 'F', 'P', 'O', 'S', 'U', 'T', 'W', 'Y', 'V', 'B', 'Z', 'X', 'J']
+# O, U, J deleted
+aa_list = ['A', 'R', 'N', 'D', 'C', 'Q', 'E', 'G', 'H', 'I', 'L', 'K', 'M', 'F', 'P', 'S', 'T', 'W', 'Y', 'V', 'B', 'Z', 'X']
 
 class Sequence_Alignment:
     
@@ -11,20 +12,25 @@ class Sequence_Alignment:
         self.ALGORITHM = alignment_alg
         self.GAP_EX = gap_ex
         self.GAP_OP = gap_op
-        self.matrix = np.zeros((len(Q)+1, len(P)+1))
+        self.alignment_matrix = np.zeros((len(Q)+1, len(P)+1))
         self.mapped_amino_acids = {}
+        # index each amino acid symbol
         for ind, aa in enumerate(aa_list):
-            #print(ind, aa)
             self.mapped_amino_acids[aa] = ind
+
+        if self.ALGORITHM == "G":
+            self.global_alignment()
+        elif self.ALGORITHM == "L":
+            self.local_alignment()
 
     def global_alignment(self):
         p = self.P
         q = self.Q
         print(p, q)
-        mat = self.matrix
+        mat = self.alignment_matrix
         #backtracking_mat = np.zeros((len(p), len(q)))
-        backtracking_mat = [[(-1,1) for j in range(len(p)+1)] for i in range(len(q)+1)]
-        print(backtracking_mat)
+        trace_mat = [[(-1,1) for j in range(len(p)+1)] for i in range(len(q)+1)]
+        print(trace_mat)
 
 
         # fill in the vertival border values 
@@ -34,16 +40,17 @@ class Sequence_Alignment:
                 mat[i][0] = self.GAP_OP
             else:
                 mat[i][0] = mat[i-1][0] + self.GAP_EX # NOT SURE IF THAT WHAT IT SHOULD BE!!!!!
-            backtracking_mat[i][0] = (i-1, 0)
+            trace_mat[i][0] = (i-1, 0)
 
         for j in range(1, len(p)+1):
             if j == 0:
                 mat[0][j] = self.GAP_OP
             else:
                 mat[0][j] = mat[0][j-1] + self.GAP_EX
-            backtracking_mat[0][j] = (0,j-1)
+            trace_mat[0][j] = (0,j-1)
         print(mat)
-        print(backtracking_mat)
+        for line in trace_mat:
+            print(line)
 
         # start to fill in the sequence matrix
         # row by row
@@ -56,25 +63,26 @@ class Sequence_Alignment:
 
 
                 max_ = max(mat[i-1][j] + self.GAP_OP, mat[i][j-1] + self.GAP_OP, mat[i-1][j-1] + self.score_matrix[p_ind][q_ind])
-                print(max_)
                 mat[i][j] = max_
                 #print("***", i , j)
 
                 # backtracking, but a scarce matrix, too much space!!!!
+                # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!12
                 if mat[i][j] == mat[i-1][j] + self.GAP_OP:
-                    backtracking_mat[i][j] = (i-1, j)
+                    trace_mat[i][j] = (i-1, j)
                     # check if the previous element was also a gap
-                    if i > 1 and backtracking_mat[i-1][j] == (i-2, j):
+                    if i > 1 and trace_mat[i-1][j] == (i-2, j):
                         # replace gap opening penalty with gap extension penalty
                         mat[i][j] = mat[i][j] - self.GAP_OP + self.GAP_EX
                 elif mat[i][j] == mat[i][j-1] + self.GAP_OP:
-                    backtracking_mat[i][j] = (i, j-1)
+                    trace_mat[i][j] = (i, j-1)
                     # check if the previous element was also a gap
-                    if j > 1 and backtracking_mat[i][j-1] == (i, j-2):
+                    if j > 1 and trace_mat[i][j-1] == (i, j-2):
                         # replace gap opening penalty with gap extension penalty
                         mat[i][j] = mat[i][j] - self.GAP_OP + self.GAP_EX
                 elif mat[i][j] == mat[i-1][j-1] + self.score_matrix[p_ind][q_ind]:
-                    backtracking_mat[i][j] = (i-1, j-1)
+                    trace_mat[i][j] = (i-1, j-1)
 
 
 
@@ -86,34 +94,122 @@ class Sequence_Alignment:
         (i, j) = (len(q), len(p))
         print(mat)
 
-        for line in backtracking_mat:
+        for line in trace_mat:
             print(line)
 
-        k = 0
+        #k = 0
         while (i,j) != (0,0):
             #print(p_result, q_result, i, j)
-            if backtracking_mat[i][j] == (i-1, j-1):
+            if trace_mat[i][j] == (i-1, j-1):
                 p_result =  p[j-1] + p_result
                 q_result = q[i-1] + q_result
-            elif backtracking_mat[i][j] == (i-1, j):
+            elif trace_mat[i][j] == (i-1, j):
                 p_result = "-" + p_result
                 q_result = q[i-1] + q_result
-            elif backtracking_mat[i][j] == (i, j-1):
+            elif trace_mat[i][j] == (i, j-1):
                 p_result = p[j-1] + p_result
                 q_result = "-" + q_result
-            (i, j) = backtracking_mat[i][j]
-            if k < 10:
+            (i, j) = trace_mat[i][j]
+            """ if k < 10:
                 print(p_result, q_result, i, j)
-                k += 1
+                k += 1 """
 
-            #print(i,j)
 
         print(p_result, q_result)
         return p_result, q_result
 
 
     def local_alignment(self):
-        pass
+        p = self.P
+        q = self.Q
+        print(p, q)
+        mat = self.alignment_matrix
+        trace_mat = [[(-1,-1) for j in range(len(p)+1)] for i in range(len(q)+1)]
+        #mat[0][0] = 0
+        trace_mat[0][0] = (0,0)
+
+        # set border values of the trace matrix
+        for i in range(1, len(q)+1):
+            #mat[i][0] = 0
+            trace_mat[i][0] = (i-1, 0)
+
+        for j in range(1, len(q)+1):
+            #mat[0][j] = 0
+            trace_mat[0][j] = (0, j-1)
+
+        for i in range(1, len(q)+1):
+            for j in range(1, len(p)+1):
+                # get the indices of the related amino acids' letters
+                # to obtain scores from the score matrix
+                p_ind, q_ind = self.get_aa_index(p[j-1], q[i-1])
+
+                # get the maximum values out of 3 neighbors
+                max_ = max(0, mat[i-1][j] + self.GAP_OP, mat[i][j-1] + self.GAP_OP, mat[i-1][j-1] + self.score_matrix[p_ind][q_ind])
+                mat[i][j] = max_
+
+                # update the trace matrix
+                if mat[i][j] == mat[i-1][j] + self.GAP_OP:
+                    trace_mat[i][j] = (i-1, j)
+                    # check if the previous element was also a gap
+                    if i > 1 and trace_mat[i-1][j] == (i-2, j):
+                        # replace gap opening penalty with gap extension penalty
+                        mat[i][j] = mat[i][j] - self.GAP_OP + self.GAP_EX
+                elif mat[i][j] == mat[i][j-1] + self.GAP_OP:
+                    trace_mat[i][j] = (i, j-1)
+                    # check if the previous element was also a gap
+                    if j > 1 and trace_mat[i][j-1] == (i, j-2):
+                        # replace gap opening penalty with gap extension penalty
+                        mat[i][j] = mat[i][j] - self.GAP_OP + self.GAP_EX
+                elif mat[i][j] == mat[i-1][j-1] + self.score_matrix[p_ind][q_ind]:
+                    trace_mat[i][j] = (i-1, j-1)
+
+         
+        
+        print(mat)
+
+        for line in trace_mat:
+            print(line)
+
+
+        """
+        find the maximum score and coordinates
+        in alignment matrix starting from bottom-right
+        """
+
+        max_ = 0 # minimum value can be 0 in local alignment
+
+        for i in range(len(q)+1):
+            for j in range(len(p)+1):
+                if mat[i][j] > max_:
+                    max_ = mat[i][j]
+                    x, y = i, j
+
+        """
+        Start backtracing from the coordinates that 
+        is found above using maximum aligment score
+        """
+
+        # resulting alignments of the sequences
+        p_result = ""
+        q_result = ""
+
+        while (x,y) != (0,0):
+            if trace_mat[x][y] == (x-1, y-1):
+                p_result =  p[y-1] + p_result
+                q_result = q[x-1] + q_result
+            elif trace_mat[x][y] == (x-1, y):
+                p_result = "-" + p_result
+                q_result = q[x-1] + q_result
+            elif trace_mat[x][y] == (x, y-1):
+                p_result = p[y-1] + p_result
+                q_result = "-" + q_result
+            print(x,y)
+            (x, y) = trace_mat[x][y]
+
+        print(p_result, q_result)
+        return p_result, q_result
+
+
 
     def get_aa_index(self, p_aa, q_aa):
         """
@@ -125,22 +221,26 @@ class Sequence_Alignment:
 
 
 
-
-
 def get_sequences(filename):
+    """
+    Reads biomoleculer sequences from file
+    and returns them
+    """
     with open(filename, "r") as f:
         lines = f.readlines()
     #print(lines)
     P, Q = check_seq(lines[0].strip()), check_seq(lines[1].strip())
 
-
     return P, Q
 
 
 def check_seq(seq):
+    """
+    Checks whether the amino acid sequence is valid or not
+    """
     for aa in seq:
         if aa not in aa_list:
-            return None
+            raise Exception("Invalid amino acid!")
     return seq
 
 
@@ -168,10 +268,13 @@ def get_score_matrix(mat_file):
             
 
 def input_handler(args):
+    """
+    Prepares the input arguments for sequence alignment
+    """
     P, Q = get_sequences(args.input)
     score_matrix = get_score_matrix(args.score_matrix)
     SA = Sequence_Alignment(P, Q, score_matrix, args.alg, int(args.gap_extension), int(args.gap_opening))
-    SA.global_alignment()
+    
     
 
 
