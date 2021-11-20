@@ -7,7 +7,7 @@ aa_list = ['A', 'R', 'N', 'D', 'C', 'Q', 'E', 'G', 'H', 'I', 'L', 'K', 'M', 'F',
 
 class Sequence_Alignment:
     
-    def __init__(self, P, Q, score_matrix, gap_ex, gap_op, alignment_alg = 'G', outfile="output.txt"):
+    def __init__(self, P, Q, score_matrix, gap_ex, gap_op, score_mat_file, alignment_alg = 'G', outfile="output.txt"):
         self.P = P
         self.Q = Q
         self.score_matrix = score_matrix
@@ -20,6 +20,7 @@ class Sequence_Alignment:
         self.percent_identity = -333
         self.p_result = ""
         self.q_result = ""
+        self.score_mat_file = score_mat_file
         # index each amino acid symbol
         for ind, aa in enumerate(aa_list):
             self.mapped_amino_acids[aa] = ind
@@ -136,18 +137,21 @@ class Sequence_Alignment:
                 align_rep.append(" ")
             else: # match
                 align_rep.append("|")
-        print("*************************")
+        """ print("*************************")
         print(mat)
         print(p_result)
         print(q_result)
         print(match_count)
         print(len(p_result))
-        print("*************************")
+        print("*************************") """
 
         self.percent_identity = match_count * 100 / len(p_result)
 
 
         data = ["Global Alignment Results (Needleman-Wunch)\n",
+                    "Gap opening penalty  :{} \n".format(self.GAP_OP),
+                    "Gap extension penalty  :{} \n".format(self.GAP_EX),
+                    "Score matrix   :{} \n".format(self.score_mat_file),
                     "".join(p_result), "\n", 
                     "".join(align_rep), "\n",
                     "".join(q_result), "\n",
@@ -185,7 +189,7 @@ class Sequence_Alignment:
                 p_ind, q_ind = self.get_aa_index(p[j-1], q[i-1])
  
                 # get the maximum values out of 3 neighbors
-                max_ = max(0, mat[i-1][j] + self.GAP_OP, mat[i][j-1] + self.GAP_OP, mat[i-1][j-1] + max(0, self.score_matrix[p_ind][q_ind]))
+                max_ = max(0, mat[i-1][j] + self.GAP_OP, mat[i][j-1] + self.GAP_OP, mat[i-1][j-1] + self.score_matrix[p_ind][q_ind])
                 mat[i][j] = max_
 
 
@@ -277,6 +281,9 @@ class Sequence_Alignment:
         
         self.percent_identity = match_count * 100 / len(p_result)
         data = ["Local Alignment Results (Smith-Waterman)\n",
+                    "Gap opening penalty  :{} \n".format(self.GAP_OP),
+                    "Gap extension penalty  :{} \n".format(self.GAP_EX),
+                    "Score matrix   :{} \n".format(self.score_mat_file),
                     "".join(p_result), "\n", 
                     "".join(align_rep), "\n",
                     "".join(q_result), "\n",
@@ -323,12 +330,13 @@ class MSA:
 
         # construct the similarity matrix
         self.fill_similarity_matrix()
-
-        self.sth()
+        # align multiple sequences
+        self.align_seqs()
+        # print the aligned sequences one after another
         self.print_MSA()
 
 
-    def sth(self):
+    def align_seqs(self):
 
         aligned_seqs_names = list()
         aa = dict()
@@ -341,6 +349,7 @@ class MSA:
                 aligned_seqs_names.append(q)
                 p = aa[p]
                 SA = Sequence_Alignment(p, q, self.score_matrix, self.GAP_EX, self.GAP_OP)
+                print("resulting p,q ", SA.p_result, SA.q_result)
                 consensus_seq = self.create_consensus(SA.p_result, SA.q_result)
                 #self.similarity_matrix[(consensus_seq,q)] = self.similarity_matrix[(p,q)]
                 #del self.similarity_matrix[(p,q)]
@@ -352,6 +361,7 @@ class MSA:
                 aligned_seqs_names.append(q)
                 q = aa[q]
                 SA = Sequence_Alignment(p, q, self.score_matrix, self.GAP_EX, self.GAP_OP)
+                print("resulting p,q ", SA.p_result, SA.q_result)
                 consensus_seq = self.create_consensus(SA.p_result, SA.q_result)
                 self.aligned_seqs.append(SA.p_result)
                 aa[p] = consensus_seq
@@ -362,12 +372,14 @@ class MSA:
                 aligned_seqs_names.append(p)
                 aligned_seqs_names.append(q)
                 SA = Sequence_Alignment(p, q, self.score_matrix, self.GAP_EX, self.GAP_OP)
+                print("resulting p,q ", SA.p_result, SA.q_result)
                 consensus_seq = self.create_consensus(SA.p_result, SA.q_result)
                 self.aligned_seqs.append(SA.p_result)
                 self.aligned_seqs.append(SA.q_result)
                 aa[p] = consensus_seq
                 aa[q] = consensus_seq
             #print(p,q)
+            print("consensus ==>", consensus_seq)
             
             """
             print(SA.p_result)
@@ -418,7 +430,7 @@ class MSA:
             elif couple[0] == couple[1]:
                 out_seq += couple[0]
             elif not couple[0] == couple[1]:
-                out_seq += "N"
+                out_seq += couple[0]
         return out_seq
 
 
@@ -492,7 +504,7 @@ def input_handler(args):
     score_matrix = get_score_matrix(args.score_matrix)
     if task == 1:
         P, Q = get_sequences(args.input, task)
-        SA = Sequence_Alignment(P, Q, score_matrix, args.alg, int(args.gap_extension), int(args.gap_opening))
+        SA = Sequence_Alignment(P, Q, score_matrix, int(args.gap_extension), int(args.gap_opening), args.score_matrix, args.alg)
     elif task == 2:
         seq_list = get_sequences(args.input, task)
         MSA_ = MSA(seq_list, score_matrix, int(args.gap_extension), int(args.gap_opening))
