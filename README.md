@@ -1,4 +1,5 @@
 ### Global and Local Alignment Algorithms for Biomolecular Sequences
+Implementations of Needleman-Wunsch (global alignment) and Smith-Waterman (local alignment) algorithms using Python.
 
 Command line:
 ```
